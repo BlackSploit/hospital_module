@@ -5,9 +5,9 @@ const AWS = require("aws-sdk");
 const async = require("async");
 const archiver = require("archiver");
 
-const logger = require("../utilities/logger");
+const logger = require("./logger");
 const commonService = require("./commonServices");
-const orderService = require("../services/OrderService");
+const orderService = require("./OrderService");
 
 const wasabiEndpoint = new AWS.Endpoint(`http://${process.env.SERVER_NAME}`);
 const accessKeyId = process.env.ACCESS_KEY;

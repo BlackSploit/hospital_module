@@ -28,21 +28,42 @@ const s3 = new S3({
  * Throws error if checksum doesn't match (i.e. file corrupted).
  */
 async function uploadFileVerified({ remotePath, fileName }) {
-  // 1. Calculate checksum of original file
+  console.log(`[DEBUG] Starting upload for file: ${remotePath}`);
+  console.log(`[DEBUG] Target S3 path: ${fileName}`);
+  console.log(`[DEBUG] Using bucket: ${bucketName}`);
+  
+  // 1. Check if file exists
+  if (!fs.existsSync(remotePath)) {
+    const error = `File not found at path: ${remotePath}`;
+    console.error(`[ERROR] ${error}`);
+    throw new Error(error);
+  }
+
+  // 2. Calculate checksum of original file
+  console.log('[DEBUG] Calculating file checksum...');
   const originalHash = await new Promise((resolve, reject) => {
     const hash = crypto.createHash("sha256");
     const stream = fs.createReadStream(remotePath);
     stream.on("data", (data) => hash.update(data));
-    stream.on("end", () => resolve(hash.digest("hex")));
-    stream.on("error", reject);
+    stream.on("end", () => {
+      const hashValue = hash.digest("hex");
+      console.log(`[DEBUG] File checksum: ${hashValue}`);
+      resolve(hashValue);
+    });
+    stream.on("error", (err) => {
+      console.error('[ERROR] Error calculating checksum:', err);
+      reject(err);
+    });
   });
 
-  // 2. Use S3's managed upload with stream (chunked internally)
+  // 3. Prepare S3 upload parameters
   const params = {
     Bucket: bucketName,
     Key: fileName,
     Body: fs.createReadStream(remotePath),
   };
+  
+  console.log('[DEBUG] Starting S3 upload...');
   await s3.upload(params).promise();
 
   // 3. Download uploaded file to temp location for verification
